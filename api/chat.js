@@ -8,30 +8,47 @@ export default async function handler(req, res) {
   }
 
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    return res.status(405).json({
+      error: 'Method not allowed'
+    });
   }
 
   try {
     const { system, messages, max_tokens } = req.body;
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01'
+    const openaiMessages = [
+      {
+        role: 'system',
+        content: system
       },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        system,
-        messages,
-        max_tokens
-      })
-    });
+      ...messages
+    ];
+
+    const response = await fetch(
+      'https://api.openai.com/v1/chat/completions',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: 'gpt-4.1-mini',
+          messages: openaiMessages,
+          max_tokens
+        })
+      }
+    );
 
     const data = await response.json();
 
-    res.status(200).json(data);
+    res.status(200).json({
+      content: [
+        {
+          text: data.choices?.[0]?.message?.content || 'No response'
+        }
+      ]
+    });
 
   } catch (err) {
     console.error(err);
